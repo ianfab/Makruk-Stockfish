@@ -153,17 +153,11 @@ namespace {
   const Score MobilityBonus[][32] = {
     { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
       S( 22, 26), S( 29, 29), S( 36, 29) },
-    { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24), S( 51, 42), // Bishops
-      S( 55, 54), S( 63, 57), S( 63, 65), S( 68, 73), S( 81, 78), S( 81, 86),
-      S( 91, 88), S( 98, 97) },
+    { S(-48,-59), S(-20,-23), S( 16, -3), S( 26, 13), S( 38, 24) },           // Bishops
     { S(-58,-76), S(-27,-18), S(-15, 28), S(-10, 55), S( -5, 69), S( -2, 82), // Rooks
       S(  9,112), S( 16,118), S( 30,132), S( 29,142), S( 32,155), S( 38,165),
       S( 46,166), S( 48,169), S( 58,171) },
-    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queens
-      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
-      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
-      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
-      S(106,184), S(109,191), S(113,206), S(116,212) }
+    { S(-20,-20), S(-10,-10), S(  0,  0), S( 10, 10) }                        // Queens
   };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
@@ -197,8 +191,8 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(5), V( 5), V(31), V(73), V(166), V(252) },
-    { V(7), V(14), V(38), V(73), V(166), V(252) }
+    { V(5), V( 5), V(31), V(73) },
+    { V(7), V(14), V(38), V(73) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -212,11 +206,8 @@ namespace {
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S( 16,  0);
-  const Score BishopPawns         = S(  8, 12);
-  const Score LongRangedBishop    = S( 22,  0);
   const Score RookOnPawn          = S(  8, 24);
   const Score TrappedRook         = S( 92,  0);
-  const Score WeakQueen           = S( 50, 10);
   const Score OtherCheck          = S( 10, 10);
   const Score CloseEnemies        = S(  7,  0);
   const Score PawnlessFlank       = S( 20, 80);
@@ -306,8 +297,8 @@ namespace {
     while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
-        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN))
-          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
+        b = Pt == ROOK   ? attacks_bb<ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK))
+          : Pt == BISHOP ? pos.attacks_from<BISHOP>(s, Us)
                          : pos.attacks_from<Pt>(s);
 
         if (pos.pinned_pieces(Us) & s)
@@ -347,30 +338,6 @@ namespace {
             if (    relative_rank(Us, s) < RANK_5
                 && (pos.pieces(PAWN) & (s + pawn_push(Us))))
                 score += MinorBehindPawn;
-
-            if (Pt == BISHOP)
-            {
-                // Penalty for pawns on the same color square as the bishop
-                score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s);
-
-                // Bonus for bishop on a long diagonal which can "see" both center squares
-                if (more_than_one(Center & (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) | s)))
-                    score += LongRangedBishop;
-            }
-
-            // An important Chess960 pattern: A cornered bishop blocked by a friendly
-            // pawn diagonally in front of it is a very serious problem, especially
-            // when that pawn is also blocked.
-            if (   Pt == BISHOP
-                && pos.is_chess960()
-                && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
-            {
-                Square d = pawn_push(Us) + (file_of(s) == FILE_A ? EAST : WEST);
-                if (pos.piece_on(s + d) == make_piece(Us, PAWN))
-                    score -= !pos.empty(s + d + pawn_push(Us))                ? TrappedBishopA1H1 * 4
-                            : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
-                                                                              : TrappedBishopA1H1;
-            }
         }
 
         if (Pt == ROOK)
@@ -383,23 +350,15 @@ namespace {
             if (pe->semiopen_file(Us, file_of(s)))
                 score += RookOnFile[!!pe->semiopen_file(Them, file_of(s))];
 
-            // Penalty when trapped by the king, even more if the king cannot castle
+            // Penalty when trapped by the king
             else if (mob <= 3)
             {
                 Square ksq = pos.square<KING>(Us);
 
                 if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                     && !pe->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
+                    score -= (TrappedRook - make_score(mob * 22, 0)) * 2;
             }
-        }
-
-        if (Pt == QUEEN)
-        {
-            // Penalty if any relative pin or discovered attack against the queen
-            Bitboard pinners;
-            if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, pinners))
-                score -= WeakQueen;
         }
     }
 
@@ -450,16 +409,15 @@ namespace {
                     + 102 * kingAdjacentZoneAttacksCount[Them]
                     + 191 * popcount(kingOnlyDefended | undefended)
                     + 143 * !!pos.pinned_pieces(Us)
-                    - 848 * !pos.count<QUEEN>(Them)
                     -   9 * mg_value(score) / 8
-                    +  40;
+                    - 1000;
 
         // Analyse the safe enemy's checks which are possible on next move
         safe  = ~pos.pieces(Them);
         safe &= ~attackedBy[Us][ALL_PIECES] | (kingOnlyDefended & attackedBy2[Them]);
 
         b1 = pos.attacks_from<  ROOK>(ksq);
-        b2 = pos.attacks_from<BISHOP>(ksq);
+        b2 = pos.attacks_from<BISHOP>(ksq, Us);
 
         // Enemy queen safe checks
         if ((b1 | b2) & attackedBy[Them][QUEEN] & safe)

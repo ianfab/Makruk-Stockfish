@@ -68,6 +68,7 @@ void init(OptionsMap& o) {
   o["Move Overhead"]         << Option(100, 0, 5000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
+  o["UCI_Variant"]           << Option("makruk", {"makruk"});
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
@@ -90,6 +91,10 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
               if (o.type != "button")
                   os << " default " << o.defaultValue;
 
+              if (o.type == "combo")
+                  for (string value : o.comboValues)
+                      os << " var " << value;
+
               if (o.type == "spin")
                   os << " min " << o.min << " max " << o.max;
 
@@ -103,6 +108,9 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 /// Option class constructors and conversion operators
 
 Option::Option(const char* v, OnChange f) : type("string"), min(0), max(0), on_change(f)
+{ defaultValue = currentValue = v; }
+
+Option::Option(const char* v, const std::vector<std::string>& variants, OnChange f) : type("combo"), min(0), max(0), comboValues(variants), on_change(f)
 { defaultValue = currentValue = v; }
 
 Option::Option(bool v, OnChange f) : type("check"), min(0), max(0), on_change(f)
@@ -120,8 +128,13 @@ Option::operator int() const {
 }
 
 Option::operator std::string() const {
-  assert(type == "string");
+  assert(type == "string" || type == "combo");
   return currentValue;
+}
+
+int Option::compare(const char* str) const {
+  assert(type == "string" || type == "combo");
+  return currentValue.compare(str);
 }
 
 
@@ -146,6 +159,7 @@ Option& Option::operator=(const string& v) {
 
   if (   (type != "button" && v.empty())
       || (type == "check" && v != "true" && v != "false")
+      || (type == "combo" && (std::find(comboValues.begin(), comboValues.end(), v) == comboValues.end()))
       || (type == "spin" && (stoi(v) < min || stoi(v) > max)))
       return *this;
 

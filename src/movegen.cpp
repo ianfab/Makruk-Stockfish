@@ -25,65 +25,11 @@
 
 namespace {
 
-  template<CastlingRight Cr, bool Checks, bool Chess960>
-  ExtMove* generate_castling(const Position& pos, ExtMove* moveList, Color us) {
-
-    static const bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
-
-    if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
-        return moveList;
-
-    // After castling, the rook and king final positions are the same in Chess960
-    // as they would be in standard chess.
-    Square kfrom = pos.square<KING>(us);
-    Square rfrom = pos.castling_rook_square(Cr);
-    Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
-    Bitboard enemies = pos.pieces(~us);
-
-    assert(!pos.checkers());
-
-    const Square K = Chess960 ? kto > kfrom ? WEST : EAST
-                              : KingSide    ? WEST : EAST;
-
-    for (Square s = kto; s != kfrom; s += K)
-        if (pos.attackers_to(s) & enemies)
-            return moveList;
-
-    // Because we generate only legal castling moves we need to verify that
-    // when moving the castling rook we do not discover some hidden checker.
-    // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(~us, ROOK, QUEEN)))
-        return moveList;
-
-    Move m = make<CASTLING>(kfrom, rfrom);
-
-    if (Checks && !pos.gives_check(m))
-        return moveList;
-
-    *moveList++ = m;
-    return moveList;
-  }
-
-
   template<GenType Type, Square D>
-  ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
+  ExtMove* make_promotions(ExtMove* moveList, Square to) {
 
-    if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
+    if (Type != QUIET_CHECKS)
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
-
-    if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
-    {
-        *moveList++ = make<PROMOTION>(to - D, to, ROOK);
-        *moveList++ = make<PROMOTION>(to - D, to, BISHOP);
-        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
-    }
-
-    // Knight promotion is the only promotion that can give a direct check
-    // that's not already included in the queen promotion.
-    if (Type == QUIET_CHECKS && (PseudoAttacks[KNIGHT][to] & ksq))
-        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
-    else
-        (void)ksq; // Silence a warning under MSVC
 
     return moveList;
   }
@@ -95,17 +41,16 @@ namespace {
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
     const Color    Them     = (Us == WHITE ? BLACK      : WHITE);
-    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB    : Rank1BB);
-    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB    : Rank2BB);
-    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB    : Rank6BB);
+    const Bitboard TRank6BB = (Us == WHITE ? Rank6BB    : Rank3BB);
+    const Bitboard TRank5BB = (Us == WHITE ? Rank5BB    : Rank4BB);
     const Square   Up       = (Us == WHITE ? NORTH      : SOUTH);
     const Square   Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Square   Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
     Bitboard emptySquares;
 
-    Bitboard pawnsOn7    = pos.pieces(Us, PAWN) &  TRank7BB;
-    Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
+    Bitboard pawnsOn5    = pos.pieces(Us, PAWN) &  TRank5BB;
+    Bitboard pawnsNotOn5 = pos.pieces(Us, PAWN) & ~TRank5BB;
 
     Bitboard enemies = (Type == EVASIONS ? pos.pieces(Them) & target:
                         Type == CAPTURES ? target : pos.pieces(Them));
@@ -115,34 +60,27 @@ namespace {
     {
         emptySquares = (Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces());
 
-        Bitboard b1 = shift<Up>(pawnsNotOn7)   & emptySquares;
-        Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
+        Bitboard b1 = shift<Up>(pawnsNotOn5)   & emptySquares;
 
         if (Type == EVASIONS) // Consider only blocking squares
-        {
             b1 &= target;
-            b2 &= target;
-        }
 
         if (Type == QUIET_CHECKS)
         {
             Square ksq = pos.square<KING>(Them);
 
             b1 &= pos.attacks_from<PAWN>(ksq, Them);
-            b2 &= pos.attacks_from<PAWN>(ksq, Them);
 
             // Add pawn pushes which give discovered check. This is possible only
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
             // promotion has been already generated amongst the captures.
             Bitboard dcCandidates = pos.discovered_check_candidates();
-            if (pawnsNotOn7 & dcCandidates)
+            if (pawnsNotOn5 & dcCandidates)
             {
-                Bitboard dc1 = shift<Up>(pawnsNotOn7 & dcCandidates) & emptySquares & ~file_bb(ksq);
-                Bitboard dc2 = shift<Up>(dc1 & TRank3BB) & emptySquares;
+                Bitboard dc1 = shift<Up>(pawnsNotOn5 & dcCandidates) & emptySquares & ~file_bb(ksq);
 
                 b1 |= dc1;
-                b2 |= dc2;
             }
         }
 
@@ -151,16 +89,10 @@ namespace {
             Square to = pop_lsb(&b1);
             *moveList++ = make_move(to - Up, to);
         }
-
-        while (b2)
-        {
-            Square to = pop_lsb(&b2);
-            *moveList++ = make_move(to - Up - Up, to);
-        }
     }
 
     // Promotions and underpromotions
-    if (pawnsOn7 && (Type != EVASIONS || (target & TRank8BB)))
+    if (pawnsOn5 && (Type != EVASIONS || (target & TRank6BB)))
     {
         if (Type == CAPTURES)
             emptySquares = ~pos.pieces();
@@ -168,27 +100,25 @@ namespace {
         if (Type == EVASIONS)
             emptySquares &= target;
 
-        Bitboard b1 = shift<Right>(pawnsOn7) & enemies;
-        Bitboard b2 = shift<Left >(pawnsOn7) & enemies;
-        Bitboard b3 = shift<Up   >(pawnsOn7) & emptySquares;
-
-        Square ksq = pos.square<KING>(Them);
+        Bitboard b1 = shift<Right>(pawnsOn5) & enemies;
+        Bitboard b2 = shift<Left >(pawnsOn5) & enemies;
+        Bitboard b3 = shift<Up   >(pawnsOn5) & emptySquares;
 
         while (b1)
-            moveList = make_promotions<Type, Right>(moveList, pop_lsb(&b1), ksq);
+            moveList = make_promotions<Type, Right>(moveList, pop_lsb(&b1));
 
         while (b2)
-            moveList = make_promotions<Type, Left >(moveList, pop_lsb(&b2), ksq);
+            moveList = make_promotions<Type, Left >(moveList, pop_lsb(&b2));
 
         while (b3)
-            moveList = make_promotions<Type, Up   >(moveList, pop_lsb(&b3), ksq);
+            moveList = make_promotions<Type, Up   >(moveList, pop_lsb(&b3));
     }
 
-    // Standard and en-passant captures
+    // Standard captures
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
     {
-        Bitboard b1 = shift<Right>(pawnsNotOn7) & enemies;
-        Bitboard b2 = shift<Left >(pawnsNotOn7) & enemies;
+        Bitboard b1 = shift<Right>(pawnsNotOn5) & enemies;
+        Bitboard b2 = shift<Left >(pawnsNotOn5) & enemies;
 
         while (b1)
         {
@@ -200,24 +130,6 @@ namespace {
         {
             Square to = pop_lsb(&b2);
             *moveList++ = make_move(to - Left, to);
-        }
-
-        if (pos.ep_square() != SQ_NONE)
-        {
-            assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
-
-            // An en passant capture can be an evasion only if the checking piece
-            // is the double pushed pawn and so is in the target. Otherwise this
-            // is a discovery check and we are forced to do otherwise.
-            if (Type == EVASIONS && !(target & (pos.ep_square() - Up)))
-                return moveList;
-
-            b1 = pawnsNotOn7 & pos.attacks_from<PAWN>(pos.ep_square(), Them);
-
-            assert(b1);
-
-            while (b1)
-                *moveList++ = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
         }
     }
 
@@ -237,7 +149,7 @@ namespace {
     {
         if (Checks)
         {
-            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            if (     Pt == ROOK
                 && !(PseudoAttacks[Pt][from] & target & pos.check_squares(Pt)))
                 continue;
 
@@ -245,7 +157,7 @@ namespace {
                 continue;
         }
 
-        Bitboard b = pos.attacks_from<Pt>(from) & target;
+        Bitboard b = (Pt == BISHOP ? pos.attacks_from<BISHOP>(from, us) : pos.attacks_from<Pt>(from)) & target;
 
         if (Checks)
             b &= pos.check_squares(Pt);
@@ -275,20 +187,6 @@ namespace {
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
-    }
-
-    if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(Us))
-    {
-        if (pos.is_chess960())
-        {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, true>(pos, moveList, Us);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, true>(pos, moveList, Us);
-        }
-        else
-        {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, false>(pos, moveList, Us);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, false>(pos, moveList, Us);
-        }
     }
 
     return moveList;
@@ -349,7 +247,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
      Bitboard b = pos.attacks_from(pt, from) & ~pos.pieces();
 
      if (pt == KING)
-         b &= ~PseudoAttacks[QUEEN][pos.square<KING>(~us)];
+         b &= ~PseudoAttacks[ROOK][pos.square<KING>(~us)];
 
      while (b)
          *moveList++ = make_move(from, pop_lsb(&b));
@@ -370,7 +268,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   Color us = pos.side_to_move();
   Square ksq = pos.square<KING>(us);
   Bitboard sliderAttacks = 0;
-  Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
+  Bitboard sliders = pos.checkers() & pos.pieces(ROOK);
 
   // Find all the squares attacked by slider checkers. We will remove them from
   // the king evasions in order to skip known illegal moves, which avoids any
@@ -410,7 +308,7 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
   while (cur != moveList)
-      if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == ENPASSANT)
+      if (   (pinned || from_sq(*cur) == ksq)
           && !pos.legal(*cur))
           *cur = (--moveList)->move;
       else
