@@ -28,7 +28,7 @@ namespace {
   template<GenType Type, Square D>
   ExtMove* make_promotions(ExtMove* moveList, Square to) {
 
-    if (Type != QUIET_CHECKS)
+    if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
         *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
 
     return moveList;
@@ -244,7 +244,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
      if (pt == PAWN)
          continue; // Will be generated together with direct checks
 
-     Bitboard b = pos.attacks_from(pt, from) & ~pos.pieces();
+     Bitboard b = (pt == BISHOP ? pos.attacks_from<BISHOP>(from, us) : pos.attacks_from(pt, from)) & ~pos.pieces();
 
      if (pt == KING)
          b &= ~PseudoAttacks[ROOK][pos.square<KING>(~us)];

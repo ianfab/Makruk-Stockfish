@@ -249,7 +249,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
-  assert(pt != PAWN);
+  assert(pt != PAWN && pt != BISHOP);
 
   switch (pt)
   {

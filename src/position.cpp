@@ -453,7 +453,8 @@ bool Position::pseudo_legal(const Move m) const {
 
           return false;
   }
-  else if (!(attacks_from(type_of(pc), from) & to))
+  else if (type_of(pc) == BISHOP ? !(attacks_from<BISHOP>(from, color_of(pc)) & to)
+                                 : !(attacks_from(type_of(pc), from) & to))
       return false;
 
   // Evasions generator already takes care to avoid some kind of illegal moves
@@ -590,7 +591,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           Piece promotion = make_piece(us, promotion_type(m));
 
           assert(relative_rank(us, to) == RANK_6);
-          assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
+          assert(type_of(promotion) == QUEEN);
 
           remove_piece(pc, to);
           put_piece(promotion, to);
@@ -658,7 +659,7 @@ void Position::undo_move(Move m) {
   {
       assert(relative_rank(us, to) == RANK_6);
       assert(type_of(pc) == promotion_type(m));
-      assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
+      assert(type_of(pc) == QUEEN);
 
       remove_piece(pc, to);
       pc = make_piece(us, PAWN);
