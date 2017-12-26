@@ -38,19 +38,19 @@ enum EndgameCode {
   EVALUATION_FUNCTIONS,
   KNNK,  // KNN vs K
   KXK,   // Generic "mate lone king" eval
+  KQsPsK, // KQsPs vs K
   KBNK,  // KBN vs K
+  KBQK,  // KBQ vs K
+  KNQK,  // KNQ vs K
   KPK,   // KP vs K
   KRKP,  // KR vs KP
   KRKB,  // KR vs KB
   KRKN,  // KR vs KN
   KQKP,  // KQ vs KP
-  KQKR,  // KQ vs KR
+  KRKQ,  // KQ vs KR
 
   SCALING_FUNCTIONS,
-  KBPsK,   // KB and pawns vs K
-  KQKRPs,  // KQ vs KR and pawns
   KRPKR,   // KRP vs KR
-  KRPKB,   // KRP vs KB
   KRPPKRP, // KRPP vs KRP
   KPsK,    // K and pawns vs K
   KBPKB,   // KBP vs KB
