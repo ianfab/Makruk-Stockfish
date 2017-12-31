@@ -145,6 +145,7 @@ public:
   Thread* this_thread() const;
   bool is_draw(int ply) const;
   int rule50_count() const;
+  int counting_limit() const;
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
@@ -316,6 +317,23 @@ inline int Position::game_ply() const {
 
 inline int Position::rule50_count() const {
   return st->rule50;
+}
+
+inline int Position::counting_limit() const {
+  Color strongSide = count<ALL_PIECES>(WHITE) > 1 ? WHITE : BLACK;
+  assert(count<ALL_PIECES>(strongSide) > 1 && count<ALL_PIECES>(~strongSide) == 1);
+
+  if (count<ROOK>(strongSide) > 1)
+      return 8;
+  if (count<ROOK>(strongSide) == 1)
+      return 16;
+  if (count<BISHOP>(strongSide) > 1)
+      return 22;
+  if (count<BISHOP>(strongSide) == 1)
+      return 44;
+  if (count<KNIGHT>(strongSide) > 1)
+      return 32;
+  return 64;
 }
 
 inline bool Position::opposite_bishops() const {
