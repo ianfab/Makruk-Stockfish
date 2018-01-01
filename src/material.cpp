@@ -74,8 +74,9 @@ namespace {
 
   // Helper used to detect a given material distribution
   bool is_KXK(const Position& pos, Color us) {
-    return  !more_than_one(pos.pieces(~us))
-          && pos.non_pawn_material(us) > KnightValueMg;
+    return   pos.count<ALL_PIECES>(~us) <= 2
+          && pos.non_pawn_material(~us) < BishopValueMg
+          && pos.non_pawn_material(us) - pos.non_pawn_material(~us) > KnightValueMg;
   }
 
   bool is_KQsPsK(const Position& pos, Color us) {

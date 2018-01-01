@@ -24,6 +24,7 @@
 #include "bitboard.h"
 #include "endgame.h"
 #include "movegen.h"
+#include "uci.h"
 
 using std::string;
 
@@ -130,7 +131,6 @@ Endgames::Endgames() {
 template<>
 Value Endgame<KXK>::operator()(const Position& pos) const {
 
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
   assert(!pos.checkers()); // Eval is never called when in check
 
   // Stalemate detection with lone king
@@ -141,19 +141,26 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   Square loserKSq = pos.square<KING>(weakSide);
 
   Value result =  pos.non_pawn_material(strongSide)
+                - pos.non_pawn_material(weakSide)
                 + pos.count<PAWN>(strongSide) * PawnValueEg
+                - pos.count<PAWN>(weakSide) * PawnValueEg
                 + PushToEdges[loserKSq]
                 + PushClose[distance(winnerKSq, loserKSq)];
 
-  if (   pos.count<  ROOK>(strongSide)
-      || pos.count<BISHOP>(strongSide) >= 2
-      ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
-      ||(pos.count<BISHOP>(strongSide) && pos.count<QUEEN>(strongSide))
-      ||(pos.count<KNIGHT>(strongSide) && pos.count<QUEEN>(strongSide) >= 2)
-      ||(pos.count< QUEEN>(strongSide) >= 3
-         && ( DarkSquares & pos.pieces(strongSide, QUEEN))
-         && (~DarkSquares & pos.pieces(strongSide, QUEEN))))
-      result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+  if (pos.count<ALL_PIECES>(weakSide) == 1)
+  {
+      if (Options["EnableCounting"])
+          result = result * std::max(2 * pos.counting_limit() - pos.rule50_count(), 0) / 128;
+      else if (   pos.count<  ROOK>(strongSide)
+              || pos.count<BISHOP>(strongSide) >= 2
+              ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
+              ||(pos.count<BISHOP>(strongSide) && pos.count<QUEEN>(strongSide))
+              ||(pos.count<KNIGHT>(strongSide) && pos.count<QUEEN>(strongSide) >= 2)
+              ||(pos.count< QUEEN>(strongSide) >= 3
+                  && ( DarkSquares & pos.pieces(strongSide, QUEEN))
+                  && (~DarkSquares & pos.pieces(strongSide, QUEEN))))
+          result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+  }
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
