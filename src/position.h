@@ -329,10 +329,10 @@ inline int Position::counting_limit() const {
       return 16;
   if (count<BISHOP>(strongSide) > 1)
       return 22;
-  if (count<BISHOP>(strongSide) == 1)
-      return 44;
   if (count<KNIGHT>(strongSide) > 1)
       return 32;
+  if (count<BISHOP>(strongSide) == 1)
+      return 44;
   return 64;
 }
 
