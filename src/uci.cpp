@@ -288,7 +288,7 @@ string UCI::move(Move m) {
   string move = UCI::square(from) + UCI::square(to);
 
   if (type_of(m) == PROMOTION)
-      move += " pnsrmk"[promotion_type(m)];
+      move += " pmsnrk"[promotion_type(m)];
 
   return move;
 }

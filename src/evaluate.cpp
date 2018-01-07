@@ -151,14 +151,14 @@ namespace {
   // MobilityBonus[PieceType-2][attacked] contains bonuses for middle and end game,
   // indexed by piece type and number of attacked squares in the mobility area.
   const Score MobilityBonus[][32] = {
-    { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
-      S( 22, 26), S( 29, 29), S( 36, 29) },
+    { S(-20,-20), S(-10,-10), S(  0,  0), S( 10, 10), S( 20, 20) },           // Queens
     { S(-50,-50), S(-30,-30), S(-10,-10), S(  0,  0), S( 20, 20),             // Bishops
       S( 40, 40) },
+    { S(-75,-76), S(-57,-54), S( -9,-28), S( -2,-10), S(  6,  5), S( 14, 12), // Knights
+      S( 22, 26), S( 29, 29), S( 36, 29) },
     { S(-58,-76), S(-27,-18), S(-15, 28), S(-10, 55), S( -5, 69), S( -2, 82), // Rooks
       S(  9,112), S( 16,118), S( 30,132), S( 29,142), S( 32,155), S( 38,165),
-      S( 46,166), S( 48,169), S( 58,171) },
-    { S(-20,-20), S(-10,-10), S(  0,  0), S( 10, 10), S( 20, 20) }            // Queens
+      S( 46,166), S( 48,169), S( 58,171) }
   };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
@@ -178,11 +178,11 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(20, 20)
+    S(0, 0), S(0, 33), S(20, 20), S(46, 47), S(45, 43), S(72, 107)
   };
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(10, 10)
+    S(0, 0), S(0, 25), S(10, 10), S(40, 59), S(40, 62), S(0, 34)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
@@ -797,10 +797,10 @@ namespace {
     initialize<WHITE>();
     initialize<BLACK>();
 
-    score += evaluate_pieces<WHITE, KNIGHT>() - evaluate_pieces<BLACK, KNIGHT>();
-    score += evaluate_pieces<WHITE, BISHOP>() - evaluate_pieces<BLACK, BISHOP>();
-    score += evaluate_pieces<WHITE, ROOK  >() - evaluate_pieces<BLACK, ROOK  >();
     score += evaluate_pieces<WHITE, QUEEN >() - evaluate_pieces<BLACK, QUEEN >();
+    score += evaluate_pieces<WHITE, BISHOP>() - evaluate_pieces<BLACK, BISHOP>();
+    score += evaluate_pieces<WHITE, KNIGHT>() - evaluate_pieces<BLACK, KNIGHT>();
+    score += evaluate_pieces<WHITE, ROOK  >() - evaluate_pieces<BLACK, ROOK  >();
 
     score += mobility[WHITE] - mobility[BLACK];
 
@@ -872,10 +872,10 @@ std::string Eval::trace(const Position& pos) {
      << "       Material | " << Term(MATERIAL)
      << "      Imbalance | " << Term(IMBALANCE)
      << "          Pawns | " << Term(PAWN)
-     << "        Knights | " << Term(KNIGHT)
-     << "        Bishops | " << Term(BISHOP)
-     << "          Rooks | " << Term(ROOK)
      << "         Queens | " << Term(QUEEN)
+     << "        Bishops | " << Term(BISHOP)
+     << "        Knights | " << Term(KNIGHT)
+     << "          Rooks | " << Term(ROOK)
      << "       Mobility | " << Term(MOBILITY)
      << "    King safety | " << Term(KING)
      << "        Threats | " << Term(THREAT)

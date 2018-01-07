@@ -48,10 +48,10 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" PNSRMK  pnsrmk");
+const string PieceToChar(" PMSNRK  pmsnrk");
 
-const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
+const Piece Pieces[] = { W_PAWN, W_QUEEN, W_BISHOP, W_KNIGHT, W_ROOK, W_KING,
+                         B_PAWN, B_QUEEN, B_BISHOP, B_KNIGHT, B_ROOK, B_KING };
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -67,7 +67,7 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 
   occupied ^= b & ~(b - 1);
 
-  if (Pt == ROOK)
+  if (Pt == BISHOP || Pt == ROOK)
       attackers |= attacks_bb<ROOK>(to, occupied) & bb[ROOK];
 
   attackers &= occupied; // After X-ray that may add already processed pieces
@@ -235,10 +235,10 @@ void Position::set_check_info(StateInfo* si) const {
   Square ksq = square<KING>(~sideToMove);
 
   si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
-  si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
-  si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq, ~sideToMove);
-  si->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
   si->checkSquares[QUEEN]  = attacks_from<QUEEN>(ksq);
+  si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq, ~sideToMove);
+  si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
+  si->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
   si->checkSquares[KING]   = 0;
 }
 
@@ -379,11 +379,11 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
   return  (attacks_from<PAWN>(s, BLACK)    & pieces(WHITE, PAWN))
         | (attacks_from<PAWN>(s, WHITE)    & pieces(BLACK, PAWN))
-        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT))
+        | (attacks_from<QUEEN>(s)          & pieces(QUEEN))
         | (attacks_from<BISHOP>(s, BLACK)  & pieces(WHITE, BISHOP))
         | (attacks_from<BISHOP>(s, WHITE)  & pieces(BLACK, BISHOP))
+        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT))
         | (attacks_bb<  ROOK>(s, occupied) & pieces(ROOK))
-        | (attacks_from<QUEEN>(s)          & pieces(QUEEN))
         | (attacks_from<KING>(s)           & pieces(KING));
 }
 
@@ -428,7 +428,7 @@ bool Position::pseudo_legal(const Move m) const {
       return MoveList<LEGAL>(*this).contains(m);
 
   // Is not a promotion, so promotion piece must be empty
-  if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
+  if (promotion_type(m) - QUEEN != NO_PIECE_TYPE)
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
