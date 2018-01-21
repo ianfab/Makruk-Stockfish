@@ -188,6 +188,8 @@ Value Endgame<KQsPsK>::operator()(const Position& pos) const {
       && ( DarkSquares & pos.pieces(strongSide, QUEEN))
       && (~DarkSquares & pos.pieces(strongSide, QUEEN)))
       result = std::min(result + VALUE_KNOWN_WIN, VALUE_MATE_IN_MAX_PLY - 1);
+  else if (pos.count<QUEEN>(strongSide) + pos.count<PAWN>(strongSide) < 3)
+      return VALUE_DRAW;
   else
   {
       bool dark  =  DarkSquares & pos.pieces(strongSide, QUEEN);
