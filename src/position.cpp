@@ -575,17 +575,15 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update incremental scores
       st->psq -= PSQT::psq[captured][capsq];
 
-      // Reset rule 50 counter
-      if (   (count<PAWN>() || type_of(captured) == PAWN)
-          && count<ALL_PIECES>(WHITE) > 1
-          && count<ALL_PIECES>(BLACK) > 1)
+      // Reset rule 50 counter unless we are in a pawnless endgame
+      if (count<PAWN>() || (type_of(captured) == PAWN && count<ALL_PIECES>(color_of(captured)) > 1))
           st->rule50 = 0;
-      // Bare king
+      // Baring the opponent's king
       else if (count<ALL_PIECES>(color_of(captured)) == 1)
           st->rule50 = 2 * count<ALL_PIECES>();
-      // Against bare king
+      // Bare king captures, increase half-move clock to fake old counting limit
       else if (count<ALL_PIECES>(~color_of(captured)) == 1)
-          st->rule50 +=  counting_limit() - old_counting_limit;
+          st->rule50 += 2 * (counting_limit() - old_counting_limit);
   }
 
   // Update hash key
@@ -623,10 +621,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
       prefetch2(thisThread->pawnsTable[st->pawnKey]);
 
-      // Reset rule 50 draw counter
-      if (   count<PAWN>()
-          && count<ALL_PIECES>(WHITE) > 1
-          && count<ALL_PIECES>(BLACK) > 1)
+      // Baring the opponent's king while promoting the last pawn
+      if (captured && !count<PAWN>() && count<ALL_PIECES>(color_of(captured)) == 1)
+          st->rule50 = 2 * count<ALL_PIECES>();
+      // Reset rule 50 counter
+      else
           st->rule50 = 0;
   }
 
@@ -813,26 +812,27 @@ bool Position::see_ge(Move m, Value threshold) const {
 }
 
 
-/// Position::is_draw() tests whether the position is drawn by 64-move rule
-/// or by repetition. It does not detect stalemates.
+/// Position::is_draw() tests whether the position is drawn by counting rules
+/// 64-move rule, or repetition. It does not detect stalemates.
+/// 64-move rule and 3fold-repetition are no official Makruk rules.
 
 bool Position::is_draw(int ply) const {
 
-  if (st->rule50 > 127 && (!checkers() || MoveList<LEGAL>(*this).size()))
-      return true;
-
-  // Counting rules
-  if (count<ALL_PIECES>(WHITE) == 1 || count<ALL_PIECES>(BLACK) == 1)
+  if (!count<PAWN>())
   {
       // K vs. K
       if (count<ALL_PIECES>() == 2)
           return true;
 
-      if (   st->rule50 > 2 * counting_limit()
+      // Counting rules
+      if (   st->rule50 > 2 * ((count<ALL_PIECES>(WHITE) == 1 || count<ALL_PIECES>(BLACK) == 1) ? counting_limit() : 64)
           && (!checkers() || MoveList<LEGAL>(*this).size())
           && Options["EnableCounting"])
           return true;
   }
+  // 64-move rule
+  else if (st->rule50 > 127 && (!checkers() || MoveList<LEGAL>(*this).size()))
+      return true;
 
   int end = std::min(st->rule50, st->pliesFromNull);
 
