@@ -621,8 +621,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
       prefetch2(thisThread->pawnsTable[st->pawnKey]);
 
-      // Baring the opponent's king while promoting the last pawn
-      if (captured && !count<PAWN>() && count<ALL_PIECES>(color_of(captured)) == 1)
+      // Promoting the last pawn when opponent only has a bare king
+      if (!count<PAWN>() && count<ALL_PIECES>(them) == 1)
           st->rule50 = 2 * count<ALL_PIECES>();
       // Reset rule 50 counter
       else
