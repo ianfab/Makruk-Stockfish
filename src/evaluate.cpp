@@ -31,7 +31,6 @@
 
 namespace {
 
-  const Bitboard Center      = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
   const Bitboard QueenSide   = FileABB | FileBBB | FileCBB | FileDBB;
   const Bitboard CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
   const Bitboard KingSide    = FileEBB | FileFBB | FileGBB | FileHBB;
