@@ -82,21 +82,6 @@ namespace {
   }
 #endif
 
-  // Map the square as if strongSide is white and strongSide's only pawn
-  // is on the left half of the board.
-  Square normalize(const Position& pos, Color strongSide, Square sq) {
-
-    assert(pos.count<PAWN>(strongSide) == 1);
-
-    if (file_of(pos.square<PAWN>(strongSide)) >= FILE_E)
-        sq = Square(sq ^ 7); // Mirror SQ_H1 -> SQ_A1
-
-    if (strongSide == BLACK)
-        sq = ~sq;
-
-    return sq;
-  }
-
 } // namespace
 
 
@@ -230,13 +215,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 }
 
 template<>
-Value Endgame<KNQK>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, KnightValueMg + QueenValueMg, 0));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  return VALUE_DRAW;
-}
+Value Endgame<KNQK>::operator()(const Position&) const { return VALUE_DRAW; }
 
 template<>
 Value Endgame<KBQK>::operator()(const Position& pos) const {
@@ -256,13 +235,7 @@ Value Endgame<KBQK>::operator()(const Position& pos) const {
 
 /// KP vs K. This endgame is evaluated with the help of a bitbase.
 template<>
-Value Endgame<KPK>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  return VALUE_DRAW;
-}
+Value Endgame<KPK>::operator()(const Position&) const { return VALUE_DRAW; }
 
 
 /// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
@@ -345,24 +318,12 @@ template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE
 
 /// KRP vs KR.
 template<>
-ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, RookValueMg, 1));
-  assert(verify_material(pos, weakSide,   RookValueMg, 0));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KRPKR>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 /// KRPP vs KRP. There is just a single rule: if the stronger side has no passed
 /// pawns and the defending king is actively placed, the position is drawish.
 template<>
-ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, RookValueMg, 2));
-  assert(verify_material(pos, weakSide,   RookValueMg, 1));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KRPPKRP>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 
 /// K and two or more pawns vs K.
@@ -382,62 +343,29 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
 
 /// KBP vs KB.
 template<>
-ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, BishopValueMg, 1));
-  assert(verify_material(pos, weakSide,   BishopValueMg, 0));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KBPKB>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 
 /// KBPP vs KB.
 template<>
-ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, BishopValueMg, 2));
-  assert(verify_material(pos, weakSide,   BishopValueMg, 0));
-
-  return SCALE_FACTOR_NONE;
-}
+ScaleFactor Endgame<KBPPKB>::operator()(const Position&) const { return SCALE_FACTOR_NONE; }
 
 
 /// KBP vs KN.
 template<>
-ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, BishopValueMg, 1));
-  assert(verify_material(pos, weakSide, KnightValueMg, 0));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KBPKN>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 
 /// KNP vs K.
 template<>
-ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, KnightValueMg, 1));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KNPK>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 
-/// KNP vs KB. If knight can block bishop from taking pawn, it's a win.
-/// Otherwise the position is drawn.
+/// KNP vs KB.
 template<>
-ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KNPKB>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
 
 
 /// KP vs KP.
 template<>
-ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
-  assert(verify_material(pos, weakSide,   VALUE_ZERO, 1));
-
-  return SCALE_FACTOR_DRAW;
-}
+ScaleFactor Endgame<KPKP>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
