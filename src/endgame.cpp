@@ -118,7 +118,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   if (pos.count<ALL_PIECES>(weakSide) == 1)
   {
-      if (Options["EnableCounting"])
+      if (!pos.count<PAWN>() && Options["EnableCounting"])
           result = result * std::max(2 * pos.counting_limit() - pos.rule50_count(), 0) / 128;
       else if (   pos.count<  ROOK>(strongSide)
               || pos.count<BISHOP>(strongSide) >= 2
