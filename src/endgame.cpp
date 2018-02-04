@@ -56,6 +56,19 @@ namespace {
     100, 90, 80, 70, 70, 80, 90, 100
   };
 
+  // Table used to drive the king towards a corner
+  // of the same color as the queen in KNQ vs K endgames.
+  const int PushToQueenCorners[SQUARE_NB] = {
+    100, 90, 80, 70, 50, 30, 10,   0,
+     90, 70, 60, 50, 30, 10,  0,  10,
+     80, 60, 40, 30, 10,  0, 10,  30,
+     70, 50, 30, 10,  0, 10, 30,  50,
+     50, 30, 10,  0, 10, 30, 50,  70,
+     30, 10,  0, 10, 30, 40, 60,  80,
+     10,  0, 10, 30, 50, 60, 70,  90,
+      0, 10, 30, 50, 70, 80, 90, 100
+  };
+
   // Tables used to drive a piece towards or away from another piece
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
@@ -197,9 +210,34 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
+/// KNQ vs K. Can only be won if the weaker side's king
+/// is close to a corner of the same color as the queen.
 template<>
-Value Endgame<KNQK>::operator()(const Position&) const { return VALUE_DRAW; }
+Value Endgame<KNQK>::operator()(const Position& pos) const {
 
+  assert(verify_material(pos, strongSide, KnightValueMg + QueenValueMg, 0));
+  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
+
+  Square winnerKSq = pos.square<KING>(strongSide);
+  Square loserKSq = pos.square<KING>(weakSide);
+  Square queenSq = pos.square<QUEEN>(strongSide);
+
+  // tries to drive toward corners A1 or H8. If we have a
+  // queen that cannot reach the above squares, we flip the kings in order
+  // to drive the enemy toward corners A8 or H1.
+  if (opposite_colors(queenSq, SQ_A1))
+  {
+      winnerKSq = ~winnerKSq;
+      loserKSq  = ~loserKSq;
+  }
+
+  Value result =  Value(PushClose[distance(winnerKSq, loserKSq)])
+                + PushToQueenCorners[loserKSq];
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+/// Mate with KBQ vs K.
 template<>
 Value Endgame<KBQK>::operator()(const Position& pos) const {
 
