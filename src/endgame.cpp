@@ -198,9 +198,34 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
+/// Mate with KNQ vs K.
 template<>
-Value Endgame<KNQK>::operator()(const Position&) const { return VALUE_DRAW; }
+Value Endgame<KNQK>::operator()(const Position& pos) const {
 
+  assert(verify_material(pos, strongSide, KnightValueMg + QueenValueMg, 0));
+  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
+
+  Square winnerKSq = pos.square<KING>(strongSide);
+  Square loserKSq = pos.square<KING>(weakSide);
+  Square queenSq = pos.square<QUEEN>(strongSide);
+
+  // tries to drive toward corners A1 or H8. If we have a
+  // queen that cannot reach the above squares, we flip the kings in order
+  // to drive the enemy toward corners A8 or H1.
+  if (opposite_colors(queenSq, SQ_A1))
+  {
+      winnerKSq = ~winnerKSq;
+      loserKSq  = ~loserKSq;
+  }
+
+  Value result =  VALUE_KNOWN_WIN
+                + PushClose[distance(winnerKSq, loserKSq)]
+                + PushToQueenCorners[loserKSq];
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+/// Mate with KBQ vs K.
 template<>
 Value Endgame<KBQK>::operator()(const Position& pos) const {
 
@@ -209,8 +234,26 @@ Value Endgame<KBQK>::operator()(const Position& pos) const {
 
   Square winnerKSq = pos.square<KING>(strongSide);
   Square loserKSq = pos.square<KING>(weakSide);
+  Square queenSq = pos.square<QUEEN>(strongSide);
+  Value result;
+  if(    (KingCorners[loserKSq] == 1 && !opposite_colors(queenSq, SQ_A1))
+      || (KingCorners[loserKSq] == 2 && !opposite_colors(queenSq, SQ_H1))
+      || (KingCorners[loserKSq] == 3 && !opposite_colors(queenSq, SQ_A8))
+      || (KingCorners[loserKSq] == 4 && !opposite_colors(queenSq, SQ_H8)) )
+  {
+      if (opposite_colors(queenSq, SQ_A1))
+      {
+        winnerKSq = ~winnerKSq;
+        loserKSq  = ~loserKSq;
+      }
 
-  Value result =  VALUE_KNOWN_WIN
+      result =  VALUE_KNOWN_WIN
+                + PushClose[distance(winnerKSq, loserKSq)]
+                + PushToQueenCorners[loserKSq];
+  
+  } else
+
+  result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
                 + PushToOpposingSideEdges[strongSide == WHITE ? loserKSq : ~loserKSq];
 
