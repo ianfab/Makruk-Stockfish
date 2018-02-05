@@ -198,23 +198,6 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
-/// Mate with KBN vs K.
-template<>
-Value Endgame<KBNK>::operator()(const Position& pos) const {
-
-  assert(verify_material(pos, strongSide, KnightValueMg + BishopValueMg, 0));
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  Square winnerKSq = pos.square<KING>(strongSide);
-  Square loserKSq = pos.square<KING>(weakSide);
-
-  Value result =  VALUE_KNOWN_WIN
-                + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToOpposingSideEdges[strongSide == WHITE ? loserKSq : ~loserKSq];
-
-  return strongSide == pos.side_to_move() ? result : -result;
-}
-
 /// Mate with KNQ vs K.
 template<>
 Value Endgame<KNQK>::operator()(const Position& pos) const {
