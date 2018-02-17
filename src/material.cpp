@@ -34,7 +34,7 @@ namespace {
   const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn queen bishop knight rook
-    {    0                                }, // Pair
+    { 1000                                }, // Pair
     {    0,    0                          }, // Pawn
     {    0,   24,    0                    }, // Queen
     {    0,  104,  137,    50             }, // Bishop
