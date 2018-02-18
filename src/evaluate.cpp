@@ -191,8 +191,8 @@ namespace {
   // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
   // We don't use a Score because we process the two components independently.
   const Value Passed[][RANK_NB] = {
-    { V(5), V( 5), V(31), V(73) },
-    { V(7), V(14), V(38), V(73) }
+    { V(0), V(10), V(20), V(40) },
+    { V(0), V(10), V(20), V(40) }
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
@@ -609,8 +609,8 @@ namespace {
             Square blockSq = s + Up;
 
             // Adjust bonus based on the king's proximity
-            ebonus +=  distance(pos.square<KING>(Them), blockSq) * 2 * rr
-                     - distance(pos.square<KING>(  Us), blockSq) * 1 * rr;
+            ebonus +=  distance(pos.square<KING>(Them), blockSq) * rr
+                     - distance(pos.square<KING>(  Us), blockSq) * rr / 2;
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_6)
@@ -622,7 +622,8 @@ namespace {
                 // If there is a rook or queen attacking/defending the pawn from behind,
                 // consider all the squaresToQueen. Otherwise consider only the squares
                 // in the pawn's path attacked or occupied by the enemy.
-                defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
+                defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s)
+                                                                  & ~(Us == WHITE ? Rank7BB | Rank8BB : Rank1BB | Rank2BB);
 
                 bb = forward_file_bb(Them, s) & pos.pieces(ROOK) & pos.attacks_from<ROOK>(s);
 
@@ -634,20 +635,21 @@ namespace {
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 8 : !(unsafeSquares & blockSq) ? 4 : 0;
+                int k = !unsafeSquares ? 4 : !(unsafeSquares & blockSq) ? 2 : 0;
 
                 // If the path to the queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
                 if (defendedSquares == squaresToQueen)
-                    k += 3;
+                    k += 2;
 
                 else if (defendedSquares & blockSq)
-                    k += 2;
+                    k += 1;
 
                 mbonus += k * rr, ebonus += k * rr;
             }
             else if (pos.pieces(Us) & blockSq)
                 mbonus += rr + r * 2, ebonus += rr + r * 2;
+
         } // rr != 0
 
         // Scale down bonus for candidate passers which need more than one

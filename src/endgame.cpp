@@ -73,7 +73,6 @@ namespace {
 
 Endgames::Endgames() {
 
-  add<KPK>("KPK");
   add<KNNK>("KNNK");
   add<KBNK>("KSNK");
   add<KBQK>("KSMK");
@@ -217,10 +216,6 @@ Value Endgame<KBQK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
-/// KP vs K. This endgame is evaluated with the help of a bitbase.
-template<>
-Value Endgame<KPK>::operator()(const Position&) const { return VALUE_DRAW; }
-
 
 /// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
 /// a bitbase. The function below returns drawish scores when the pawn is
@@ -308,22 +303,6 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position&) const { return SCALE_FAC
 /// pawns and the defending king is actively placed, the position is drawish.
 template<>
 ScaleFactor Endgame<KRPPKRP>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
-
-
-/// K and two or more pawns vs K.
-template<>
-ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
-
-  assert(pos.non_pawn_material(strongSide) == VALUE_ZERO);
-  assert(pos.count<PAWN>(strongSide) >= 2);
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  if (pos.count<PAWN>(strongSide) == 2)
-      return SCALE_FACTOR_DRAW;
-
-  return SCALE_FACTOR_NONE;
-}
-
 
 /// KBP vs KB.
 template<>

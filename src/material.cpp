@@ -58,7 +58,6 @@ namespace {
   Endgame<KXK>    EvaluateKXK[]    = { Endgame<KXK>(WHITE),    Endgame<KXK>(BLACK) };
   Endgame<KQsPsK> EvaluateKQsPsK[] = { Endgame<KQsPsK>(WHITE), Endgame<KQsPsK>(BLACK) };
 
-  Endgame<KPsK>   ScaleKPsK[]   = { Endgame<KPsK>(WHITE),   Endgame<KPsK>(BLACK) };
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper used to detect a given material distribution
@@ -137,6 +136,7 @@ Entry* probe(const Position& pos) {
   if ((e->evaluationFunction = pos.this_thread()->endgames.probe<Value>(key)) != nullptr)
       return e;
 
+  // Only queens and pawns against bare king
   for (Color c = WHITE; c <= BLACK; ++c)
       if (is_KQsPsK(pos, c))
       {
@@ -144,6 +144,7 @@ Entry* probe(const Position& pos) {
           return e;
       }
 
+  // All other KXK situations
   for (Color c = WHITE; c <= BLACK; ++c)
       if (is_KXK(pos, c))
       {
@@ -161,39 +162,15 @@ Entry* probe(const Position& pos) {
       return e;
   }
 
-
-  if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN)) // Only pawns on the board
-  {
-      if (!pos.count<PAWN>(BLACK))
-      {
-          assert(pos.count<PAWN>(WHITE) >= 2);
-
-          e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
-      }
-      else if (!pos.count<PAWN>(WHITE))
-      {
-          assert(pos.count<PAWN>(BLACK) >= 2);
-
-          e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
-      }
-      else if (pos.count<PAWN>(WHITE) == 1 && pos.count<PAWN>(BLACK) == 1)
-      {
-          // This is a special case because we set scaling functions
-          // for both colors instead of only one.
-          e->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
-          e->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
-      }
-  }
-
-  // Zero or just one pawn makes it difficult to win, even with a small material
-  // advantage. This catches some trivial draws like KK, KBK and KNK and gives a
+  // A small material advantage makes it difficult to win.
+  // This catches some trivial draws like KK, KBK and KNK and gives a
   // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
-  if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= KnightValueMg)
-      e->factor[WHITE] = uint8_t(npm_w <= KnightValueMg ? SCALE_FACTOR_DRAW :
+  if (npm_w + pos.count<PAWN>(WHITE) * QueenValueEg - npm_b <= KnightValueMg)
+      e->factor[WHITE] = uint8_t(npm_w + pos.count<PAWN>(WHITE) * QueenValueEg <= KnightValueMg ? SCALE_FACTOR_DRAW :
                                  npm_b <= BishopValueMg ? 4 : 14);
 
-  if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= KnightValueMg)
-      e->factor[BLACK] = uint8_t(npm_b <= KnightValueMg ? SCALE_FACTOR_DRAW :
+  if (npm_b + pos.count<PAWN>(BLACK) * QueenValueEg - npm_w <= KnightValueMg)
+      e->factor[BLACK] = uint8_t(npm_b + pos.count<PAWN>(BLACK) * QueenValueEg <= KnightValueMg ? SCALE_FACTOR_DRAW :
                                  npm_w <= BishopValueMg ? 4 : 14);
 
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
