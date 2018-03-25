@@ -35,6 +35,7 @@ const vector<string> Defaults = {
   "r1sm1r2/3k1s1R/1pp2p2/P1nnPP2/7p/PS3N2/3NSM1P/2RK4 w 0 1",
   "3m4/4s2k/2R1p3/2S2pM1/p2NnP2/4P3/4K3/1r6 b 12 45",
   "3r3r/2snm1k1/5pp1/1Pp5/p1S1PP1p/P1S3PP/K4M2/3R3R b 1 25",
+  "6r1/2mnks2/pps1pn1p/2pp1p2/1PNP1P2/P1PKPS1P/2S1N3/R3M3 w 0 16",
   "8/8/5k2/7p/8/6RR/3K4/8 w 0 1 moves h3h5" // draw by counting rules
 };
 
