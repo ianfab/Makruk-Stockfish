@@ -629,7 +629,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Reset honor's rule counter
       st->honor_cnt = 0;
   }
-  else if((last_pawn_gone && count<ALL_PIECES>(them) == 1)||counting_limit()>64){
+  else if(count<ALL_PIECES>(them) == 1 && (last_pawn_gone ||counting_limit()>64)){
       // Set up counting limit and start counting 
       // when last pawn has gone and opponent only has a bare king
       set_counting_limit();
