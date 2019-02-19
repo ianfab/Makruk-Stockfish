@@ -412,7 +412,7 @@ WDLEntry::WDLEntry(const std::string& code) {
     StateInfo st;
     Position pos;
 
-    memset(this, 0, sizeof(WDLEntry));
+    memset(static_cast<void*>(this), 0, sizeof(WDLEntry));
 
     ready = false;
     key = pos.set(code, WHITE, &st).material_key();
@@ -453,7 +453,7 @@ WDLEntry::~WDLEntry() {
 
 DTZEntry::DTZEntry(const WDLEntry& wdl) {
 
-    memset(this, 0, sizeof(DTZEntry));
+    memset(static_cast<void*>(this), 0, sizeof(DTZEntry));
 
     ready = false;
     key = wdl.key;
