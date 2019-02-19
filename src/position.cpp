@@ -214,6 +214,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   // Convert from fullmove starting from 1 to gamePly starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
+  
+  // Honor's rules : BJ
+  st->honor_limit = 64;
+  st->honor_cnt = count<ALL_PIECES>();
 
   chess960 = isChess960;
   thisThread = th;
@@ -540,6 +544,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++gamePly;
   ++st->rule50;
   ++st->pliesFromNull;
+  ++st->honor_cnt;
 
   Color us = sideToMove;
   Color them = ~us;
@@ -552,10 +557,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == them);
   assert(type_of(captured) != KING);
 
+  int last_pawn_gone = count<PAWN>();
+
   if (captured)
   {
       Square capsq = to;
-      int old_counting_limit = count<ALL_PIECES>(~color_of(captured)) == 1 ? counting_limit() : 0;
 
       // If the captured piece is a pawn, update pawn hash key, otherwise
       // update non-pawn material.
@@ -575,15 +581,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update incremental scores
       st->psq -= PSQT::psq[captured][capsq];
 
-      // Reset rule 50 counter unless we are in a pawnless endgame
-      if (count<PAWN>() || (type_of(captured) == PAWN && count<ALL_PIECES>(color_of(captured)) > 1))
-          st->rule50 = 0;
-      // Baring the opponent's king
-      else if (count<ALL_PIECES>(color_of(captured)) == 1)
-          st->rule50 = 2 * count<ALL_PIECES>();
-      // Bare king captures, increase half-move clock to fake old counting limit
-      else if (count<ALL_PIECES>(~color_of(captured)) == 1)
-          st->rule50 += 2 * (counting_limit() - old_counting_limit);
+      // Reset rule 50 counter
+      st->rule50 = 0;
   }
 
   // Update hash key
@@ -621,12 +620,20 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
       prefetch2(thisThread->pawnsTable[st->pawnKey]);
 
-      // Promoting the last pawn when opponent only has a bare king
-      if (!count<PAWN>() && count<ALL_PIECES>(them) == 1)
-          st->rule50 = 2 * count<ALL_PIECES>();
       // Reset rule 50 counter
-      else
-          st->rule50 = 0;
+      st->rule50 = 0;
+  }
+
+  // Honor's rule is counting on pawnless board
+  if(count<PAWN>()){
+      // Reset honor's rule counter
+      st->honor_cnt = 0;
+  }
+  else if(last_pawn_gone && count<ALL_PIECES>(them) == 1){
+      // Set up counting limit and start counting 
+      // when last pawn has gone and opponent only has a bare king
+      set_counting_limit();
+      st->honor_cnt = count<ALL_PIECES>();
   }
 
   // Update incremental scores
@@ -825,13 +832,13 @@ bool Position::is_draw(int ply) const {
           return true;
 
       // Counting rules
-      if (   st->rule50 > 2 * ((count<ALL_PIECES>(WHITE) == 1 || count<ALL_PIECES>(BLACK) == 1) ? counting_limit() : 64)
+      if (   honor_rule_count() > 2 * counting_limit()
           && (!checkers() || MoveList<LEGAL>(*this).size())
           && Options["EnableCounting"])
           return true;
   }
-  // 64-move rule
-  else if (st->rule50 > 127 && (!checkers() || MoveList<LEGAL>(*this).size()))
+  // 50-move rule is expanding to 100 moves to keep eyes on possible draw 
+  else if (st->rule50 > 100*2 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
   int end = std::min(st->rule50, st->pliesFromNull);

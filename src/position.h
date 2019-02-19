@@ -44,6 +44,10 @@ struct StateInfo {
   int    pliesFromNull;
   Score  psq;
 
+  // Honor's rules : BJ
+  int   honor_cnt;
+  int   honor_limit;
+
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
   Bitboard   checkersBB;
@@ -145,7 +149,12 @@ public:
   Thread* this_thread() const;
   bool is_draw(int ply) const;
   int rule50_count() const;
+
+  // Honor's rules : BJ
   int counting_limit() const;
+  void set_counting_limit();
+  int honor_rule_count() const;
+
   Score psq_score() const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
@@ -320,20 +329,28 @@ inline int Position::rule50_count() const {
 }
 
 inline int Position::counting_limit() const {
+  return st->honor_limit;
+}
+
+inline void Position::set_counting_limit() {
   Color strongSide = count<ALL_PIECES>(WHITE) > 1 ? WHITE : BLACK;
   assert(count<ALL_PIECES>(strongSide) > 1 && count<ALL_PIECES>(~strongSide) == 1);
 
   if (count<ROOK>(strongSide) > 1)
-      return 8;
-  if (count<ROOK>(strongSide) == 1)
-      return 16;
-  if (count<BISHOP>(strongSide) > 1)
-      return 22;
-  if (count<KNIGHT>(strongSide) > 1)
-      return 32;
-  if (count<BISHOP>(strongSide) == 1)
-      return 44;
-  return 64;
+      st->honor_limit = 8;
+  else if (count<ROOK>(strongSide) == 1)
+      st->honor_limit = 16;
+  else if (count<BISHOP>(strongSide) > 1)
+      st->honor_limit = 22;
+  else if (count<KNIGHT>(strongSide) > 1)
+      st->honor_limit = 32;
+  else if (count<BISHOP>(strongSide) == 1)
+      st->honor_limit = 44;
+  else st->honor_limit = 64;
+}
+
+inline int Position::honor_rule_count() const {
+  return st->honor_cnt;
 }
 
 inline bool Position::queen_pair(Color c) const {

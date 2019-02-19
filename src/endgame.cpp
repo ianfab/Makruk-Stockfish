@@ -56,6 +56,19 @@ namespace {
     100, 90, 80, 70, 70, 80, 90, 100
   };
 
+  // Table used to drive the king towards a corner
+  // of the same color as the queen in KNQ vs K endgames.
+  const int PushToQueenCorners[SQUARE_NB] = {
+    100, 90, 80, 70, 50, 30, 10,   0,
+     90, 70, 60, 50, 30, 10,  0,  10,
+     80, 60, 40, 30, 10,  0, 10,  30,
+     70, 50, 30, 10,  0, 10, 30,  50,
+     50, 30, 10,  0, 10, 30, 50,  70,
+     30, 10,  0, 10, 30, 40, 60,  80,
+     10,  0, 10, 30, 50, 60, 70,  90,
+      0, 10, 30, 50, 70, 80, 90, 100
+  };
+
   // Tables used to drive a piece towards or away from another piece
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
@@ -73,7 +86,6 @@ namespace {
 
 Endgames::Endgames() {
 
-  add<KPK>("KPK");
   add<KNNK>("KNNK");
   add<KBNK>("KSNK");
   add<KBQK>("KSMK");
@@ -119,7 +131,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   if (pos.count<ALL_PIECES>(weakSide) == 1)
   {
       if (!pos.count<PAWN>() && Options["EnableCounting"])
-          result = result * std::max(2 * pos.counting_limit() - pos.rule50_count(), 0) / 128;
+          result = result * std::max(2 * pos.counting_limit() - pos.honor_rule_count(), 0) / 128;
       else if (   pos.count<  ROOK>(strongSide)
               || pos.count<BISHOP>(strongSide) >= 2
               ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
@@ -198,7 +210,8 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
-/// Mate with KNQ vs K.
+/// KNQ vs K. Can only be won if the weaker side's king
+/// is close to a corner of the same color as the queen.
 template<>
 Value Endgame<KNQK>::operator()(const Position& pos) const {
 
@@ -218,8 +231,7 @@ Value Endgame<KNQK>::operator()(const Position& pos) const {
       loserKSq  = ~loserKSq;
   }
 
-  Value result =  VALUE_KNOWN_WIN
-                + PushClose[distance(winnerKSq, loserKSq)]
+  Value result =  Value(PushClose[distance(winnerKSq, loserKSq)])
                 + PushToQueenCorners[loserKSq];
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -234,35 +246,13 @@ Value Endgame<KBQK>::operator()(const Position& pos) const {
 
   Square winnerKSq = pos.square<KING>(strongSide);
   Square loserKSq = pos.square<KING>(weakSide);
-  Square queenSq = pos.square<QUEEN>(strongSide);
-  Value result;
-  if(    (KingCorners[loserKSq] == 1 && !opposite_colors(queenSq, SQ_A1))
-      || (KingCorners[loserKSq] == 2 && !opposite_colors(queenSq, SQ_H1))
-      || (KingCorners[loserKSq] == 3 && !opposite_colors(queenSq, SQ_A8))
-      || (KingCorners[loserKSq] == 4 && !opposite_colors(queenSq, SQ_H8)) )
-  {
-      if (opposite_colors(queenSq, SQ_A1))
-      {
-        winnerKSq = ~winnerKSq;
-        loserKSq  = ~loserKSq;
-      }
 
-      result =  VALUE_KNOWN_WIN
-                + PushClose[distance(winnerKSq, loserKSq)]
-                + PushToQueenCorners[loserKSq];
-  
-  } else
-
-  result =  VALUE_KNOWN_WIN
+  Value result =  VALUE_KNOWN_WIN
                 + PushClose[distance(winnerKSq, loserKSq)]
                 + PushToOpposingSideEdges[strongSide == WHITE ? loserKSq : ~loserKSq];
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
-
-/// KP vs K. This endgame is evaluated with the help of a bitbase.
-template<>
-Value Endgame<KPK>::operator()(const Position&) const { return VALUE_DRAW; }
 
 
 /// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
@@ -351,22 +341,6 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position&) const { return SCALE_FAC
 /// pawns and the defending king is actively placed, the position is drawish.
 template<>
 ScaleFactor Endgame<KRPPKRP>::operator()(const Position&) const { return SCALE_FACTOR_DRAW; }
-
-
-/// K and two or more pawns vs K.
-template<>
-ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
-
-  assert(pos.non_pawn_material(strongSide) == VALUE_ZERO);
-  assert(pos.count<PAWN>(strongSide) >= 2);
-  assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
-
-  if (pos.count<PAWN>(strongSide) == 2)
-      return SCALE_FACTOR_DRAW;
-
-  return SCALE_FACTOR_NONE;
-}
-
 
 /// KBP vs KB.
 template<>
