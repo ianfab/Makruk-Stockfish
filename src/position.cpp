@@ -216,7 +216,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
   
   // Honor's rules : BJ
-  st->honor_limit = 64;
+  st->honor_limit = 66;
   st->honor_cnt = count<ALL_PIECES>();
 
   chess960 = isChess960;
@@ -629,7 +629,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Reset honor's rule counter
       st->honor_cnt = 0;
   }
-  else if(last_pawn_gone && count<ALL_PIECES>(them) == 1){
+  else if((last_pawn_gone && count<ALL_PIECES>(them) == 1)||counting_limit()>64){
       // Set up counting limit and start counting 
       // when last pawn has gone and opponent only has a bare king
       set_counting_limit();
@@ -718,6 +718,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   ++st->rule50;
   st->pliesFromNull = 0;
+  ++st->honor_cnt;
 
   sideToMove = ~sideToMove;
 
