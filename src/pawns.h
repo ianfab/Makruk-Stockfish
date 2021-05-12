@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2021 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,7 +25,7 @@
 #include "position.h"
 #include "types.h"
 
-namespace Stockfish::Pawns {
+namespace Pawns {
 
 /// Pawns::Entry contains various information about a pawn structure. A lookup
 /// to the pawn hash table (performed by calling the probe function) returns a
@@ -36,11 +38,10 @@ struct Entry {
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
   int passed_count() const { return popcount(passedPawns[WHITE] | passedPawns[BLACK]); }
-  int blocked_count() const { return blockedCount; }
 
   template<Color Us>
   Score king_safety(const Position& pos) {
-    return  kingSquares[Us] == pos.square<KING>(Us) && castlingRights[Us] == pos.castling_rights(Us)
+    return  kingSquares[Us] == pos.square<KING>(Us)
           ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos));
   }
 
@@ -48,7 +49,7 @@ struct Entry {
   Score do_king_safety(const Position& pos);
 
   template<Color Us>
-  Score evaluate_shelter(const Position& pos, Square ksq) const;
+  void evaluate_shelter(const Position& pos, Square ksq, Score& shelter);
 
   Key key;
   Score scores[COLOR_NB];
@@ -57,14 +58,12 @@ struct Entry {
   Bitboard pawnAttacksSpan[COLOR_NB];
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
-  int castlingRights[COLOR_NB];
-  int blockedCount;
 };
 
 typedef HashTable<Entry, 131072> Table;
 
 Entry* probe(const Position& pos);
 
-} // namespace Stockfish::Pawns
+} // namespace Pawns
 
 #endif // #ifndef PAWNS_H_INCLUDED

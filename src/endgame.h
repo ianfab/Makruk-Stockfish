@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2021 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2021 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,44 +21,170 @@
 #ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
+#include <map>
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 
 #include "position.h"
 #include "types.h"
 
-namespace Stockfish {
 
 /// EndgameCode lists all supported endgame functions by corresponding codes
 
 enum EndgameCode {
 
-  EVALUATION_FUNCTIONS,
+  EVALUATION_FUNCTIONS, //redghost
   KNNK,  // KNN vs K
   KNNKP, // KNN vs KP
+  KNNKQ,
+  KNNKB,
+  KNNKN,
+  KNNKR,
+  KNK,
+  KBK,
+  KBKQ,
+  KBKP,
+  KQK,
+  KQKP,
+  KQQK,
+  KQPK,
+  KPPK,
+  KPK,
+  KNKP,
+  KNKQ,
+  KNKB,
   KXK,   // Generic "mate lone king" eval
-  KBNK,  // KBN vs K
-  KPK,   // KP vs K
-  KRKP,  // KR vs KP
-  KRKB,  // KR vs KB
-  KRKN,  // KR vs KN
-  KQKP,  // KQ vs KP
-  KQKR,  // KQ vs KR
+  KQsPsK, // KQsPs vs K
+  KXKRR,
+  KRXKRR,
+  KRRKR,
+  KRNBQKR,
+  KRNNKR,
+  KRNBKR,
+  KRNQKR,
+  KRBBKR,
+  KRBQKR,
+  KRQQQKR,
+  KRQQKR,
+  KRKQ,
+  KQQQKQ,
+  KBQKQ,
+  KBBKQ,
+  KNBQKQ,
+  KNNQKQ,
+  KNQQKQ,
+  KNBKQ,
+  KRKB,
+  KNBQKB,
+  KNQQKB,
+  KBQQKB,
+  KNNQKB,
+  KBBQKB,
+  KNBKB,
+  KQQQQKB,
+  KBQQQQKR,
+  KBBQQKR,
+  KNQQQQKR,
+  KNNQQKR,
+  KBBNKR,
+  KNBBQKR,
+  KNNBKR,
+  KNNBQKR,
+  KNBQQKR,
+  KQQQQQKR,
+  KRNBQKN,
+  KRNBKN,
+  KRNQKN,
+  KRBQKN,
+  KRQKN,
+  KRBKN,
+  KRNKN,
+  KRRKN,
+  KBQQQKN,
+  KNQQQKN,
+  KBBQKN,
+  KNBQKN,
+  KNNQQKN,
+  KNNBKN,
+  KNNPKNP,
+  KNNPKNQ,
+  KNNPKNB,
+  KNBBKN,
+  KQQQQQKN,
+  KRNQKRQ,
+  KRBQQKRQ,
+  KRNQQKRB,
+  KBQK,
+  KNQK,
+  KRKN,
+  KRQKBQ,
+  KNQQQKR,
+  KBQQQKR,
+  KRNKR,
+  KRBKR,
+  KRQKR,
+  KRPKR,
+  KNPK,
+  KNPKP,
+  KNPKQ,
+  KNPKQQ,
+  KNQKP,
+  KNQKQ,
+  KNQKQQ,
+  KNPKB,
+  KNQKB,
+  KNPKN,
+  KNQKN,
+  KRQPKR,
+  KRPPKR,
+  KBQQKN,
+  KNQQKN,
+  KNQQKBQ,
+  KNBQKR,
+  KNBQQKRQ,
+  KRQQKRQ,
+  KRNQKRB,
+  KRBQKRQ,
+  KQQQKQQ,
+  KBQQKBQ,
+  KBQPKBQ,
+  KBPPKBQ,
+  KQQKQ,
+  KBQKB,
+  KQQQKB,
+  KBPKB,
+  KQQPKB,
+  KQPPKB,
+  KPPPKB,
+  KNQPKN,
+  KNPPKN,
+  KBQPKN,
+  KBPPKN,
+  KRNPKRB,
+  KRBPKRQ,
+  KNPPPKR,
+  KNQPPKR,
+  KNQQPKR,
+  KBPPPKR,
+  KBQPPKR,
+  KBQQPKR,
+  KNQQKQQ,
+  KNQPKQQ,
+  KNPPKQQ,
+  KNQQQKNQ,
+  KNNKPP,
+  KNNKQP,
+  KNNKQQ,
+  KNNKBP,
+  KNNKBQ,
+  KNNKBB,
+  KNNKNP,
+  KNNKNQ,
+  KNNKNB, // redghost
 
-  SCALING_FUNCTIONS,
-  KBPsK,   // KB and pawns vs K
-  KQKRPs,  // KQ vs KR and pawns
-  KRPKR,   // KRP vs KR
-  KRPKB,   // KRP vs KB
-  KRPPKRP, // KRPP vs KRP
-  KPsK,    // K and pawns vs K
-  KBPKB,   // KBP vs KB
-  KBPPKB,  // KBPP vs KB
-  KBPKN,   // KBP vs KN
-  KPKP     // KP vs KP
+  SCALING_FUNCTIONS
 };
 
 
@@ -95,7 +223,7 @@ struct Endgame : public EndgameBase<T> {
 namespace Endgames {
 
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
-  template<typename T> using Map = std::unordered_map<Key, Ptr<T>>;
+  template<typename T> using Map = std::map<Key, Ptr<T>>;
 
   extern std::pair<Map<Value>, Map<ScaleFactor>> maps;
 
@@ -116,11 +244,8 @@ namespace Endgames {
 
   template<typename T>
   const EndgameBase<T>* probe(Key key) {
-    auto it = map<T>().find(key);
-    return it != map<T>().end() ? it->second.get() : nullptr;
+    return map<T>().count(key) ? map<T>()[key].get() : nullptr;
   }
 }
-
-} // namespace Stockfish
 
 #endif // #ifndef ENDGAME_H_INCLUDED
